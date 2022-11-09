@@ -2,24 +2,31 @@ package service
 
 import (
 	"context"
+	"distributedDemo/registry"
 	"fmt"
 	"log"
 	"net/http"
 )
 
 // Start 启动多个webserver服务
-func Start(ctx context.Context, serviceName, host, port string, registerHandlersFunc func()) (context.Context, error) {
+func Start(ctx context.Context, host, port string,
+	reg registry.Registration, registerHandlersFunc func()) (context.Context, error) {
 	registerHandlersFunc()
-	ctx = startService(ctx, serviceName, host, port)
+	ctx = startService(ctx, reg.ServiceName, host, port)
+	err := registry.RegisterService(reg)
+	if err != nil {
+		return ctx, err
+	}
 	return ctx, nil
 }
-func startService(ctx context.Context, serviceName, host, port string) context.Context {
+func startService(ctx context.Context, serviceName registry.ServiceName,
+	host, port string) context.Context {
 	ctx, cancel := context.WithCancel(ctx)
-	var server http.Server
-	server.Addr = host + ":" + port
+	var srv http.Server
+	srv.Addr = host + port
 
 	go func() {
-		log.Println(server.ListenAndServe())
+		log.Println(srv.ListenAndServe())
 		cancel()
 	}()
 
@@ -27,7 +34,7 @@ func startService(ctx context.Context, serviceName, host, port string) context.C
 		fmt.Printf("%v started.Press any key to stop...\n", serviceName)
 		var s string
 		fmt.Scanln(&s)
-		_ = server.Shutdown(ctx)
+		_ = srv.Shutdown(ctx)
 		cancel()
 	}()
 

@@ -44,10 +44,12 @@ func RegisterHandlers() {
 			write(string(msg))
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
 		}
 	})
 }
 func write(message string) {
 	log.Println("func write:\n", message)
+	//由此写入文件
 	logger.Printf("%v\n", message)
 }
