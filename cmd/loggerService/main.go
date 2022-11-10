@@ -12,10 +12,12 @@ import (
 func main() {
 	//todo 将各种配置使用配置文件的方式读取
 	logger.Run("./distributed.log")
+
 	host, port := "localhost", ":4000"
 	serviceAddress := fmt.Sprintf("http://%s%s", host, port)
+
 	r := registry.Registration{
-		ServiceName: "Logger Service",
+		ServiceName: registry.LoggerService,
 		ServiceURL:  serviceAddress,
 	}
 	ctx, err := service.Start(
@@ -26,7 +28,7 @@ func main() {
 		logger.RegisterHandlers,
 	)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("starting", registry.LoggerService, ":", err)
 	}
 	//服务启动失败或手动终止时
 	<-ctx.Done()
