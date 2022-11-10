@@ -19,6 +19,8 @@ func Start(ctx context.Context, host, port string,
 	}
 	return ctx, nil
 }
+
+// 操作服务状态（启动或关闭）(包级函数）
 func startService(ctx context.Context, serviceName registry.ServiceName,
 	host, port string) context.Context {
 	ctx, cancel := context.WithCancel(ctx)
