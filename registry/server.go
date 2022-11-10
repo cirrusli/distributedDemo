@@ -23,6 +23,13 @@ func (r *registry) add(reg Registration) error {
 	r.mutex.Lock()
 	r.registrations = append(r.registrations, reg)
 	r.mutex.Unlock()
+	err := r.sendRequiredServices(reg)
+	if err != nil {
+
+	}
+	return nil
+}
+func (r *registry) sendRequiredServices(reg Registration) error {
 	return nil
 }
 
