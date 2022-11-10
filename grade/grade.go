@@ -24,7 +24,8 @@ func (s Student) Average() float32 {
 type Students []Student
 
 var (
-	students      Students
+	students Students
+	//students是一个集合,可能是并发访问,需要加互斥锁以保证并发安全
 	studentsMutex sync.Mutex
 )
 
