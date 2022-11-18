@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,7 +16,7 @@ const ServiceURL = "http://localhost" + ServerPort + "/services"
 type registry struct {
 	registrations []Registration
 	//可能被多个线程并发地访问，因此为了保证线程安全，要加上互斥锁
-	mutex *sync.Mutex
+	mutex *sync.RWMutex
 }
 
 //添加服务注册
@@ -24,12 +25,45 @@ func (r *registry) add(reg Registration) error {
 	r.registrations = append(r.registrations, reg)
 	r.mutex.Unlock()
 	err := r.sendRequiredServices(reg)
-	if err != nil {
+	return err
+}
 
+//请求所依赖的服务
+func (r *registry) sendRequiredServices(reg Registration) error {
+	//仅需要一个读的锁
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	var p patch
+	//查看要添加的服务是否存在
+	for _, serviceReg := range r.registrations {
+		for _, reqService := range reg.RequiredServices {
+			if serviceReg.ServiceName == reqService {
+				//存在则添加到待注册服务列表中
+				p.Added = append(p.Added, patchEntry{
+					Name: serviceReg.ServiceName,
+					URL:  serviceReg.ServiceURL,
+				})
+			}
+
+		}
+	}
+	err := r.sendPatch(p, reg.ServiceUpdateURL)
+	if err != nil {
+		return err
 	}
 	return nil
 }
-func (r *registry) sendRequiredServices(reg Registration) error {
+func (r *registry) sendPatch(p patch, url string) error {
+	d, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	//使用NewBuffer将变量d变为ioReader类型
+	_, err = http.Post(url, "application/json", bytes.NewBuffer(d))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -50,7 +84,7 @@ func (r *registry) remove(url string) error {
 //包级变量
 var reg = registry{
 	registrations: make([]Registration, 0),
-	mutex:         new(sync.Mutex),
+	mutex:         new(sync.RWMutex),
 }
 
 // RegService 让如下结构体成为httpserver类型

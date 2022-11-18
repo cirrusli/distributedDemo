@@ -1,9 +1,9 @@
 package registry
 
 type Registration struct {
-	ServiceName     ServiceName
-	ServiceURL      string
-	RequiredService []ServiceName
+	ServiceName      ServiceName
+	ServiceURL       string
+	RequiredServices []ServiceName
 	//如：当registry中有grade所依赖的logger服务时，由此返回
 	ServiceUpdateURL string
 }
