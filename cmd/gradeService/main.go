@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"distributedDemo/grade"
+	"distributedDemo/logger"
 	"distributedDemo/registry"
 	"distributedDemo/service"
 	"fmt"
@@ -14,8 +15,10 @@ func main() {
 	serviceAddress := fmt.Sprintf("http://%s%s", host, port)
 
 	r := registry.Registration{
-		ServiceName: registry.GradeService,
-		ServiceURL:  serviceAddress,
+		ServiceName:      registry.GradeService,
+		ServiceURL:       serviceAddress,
+		RequiredServices: []registry.ServiceName{registry.LoggerService},
+		ServiceUpdateURL: serviceAddress + "/services",
 	}
 	ctx, err := service.Start(
 		context.Background(),
@@ -26,6 +29,10 @@ func main() {
 	)
 	if err != nil {
 		log.Fatalln("starting", registry.GradeService, ":", err)
+	}
+	if logProvider, err := registry.GetProvider(registry.LoggerService); err == nil {
+		fmt.Println("Logger service found at:", logProvider)
+		logger.SetClientLogger(logProvider, r.ServiceName)
 	}
 	//服务启动失败或手动终止时
 	<-ctx.Done()

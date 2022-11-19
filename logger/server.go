@@ -47,7 +47,7 @@ func (fl fileLog) Write(data []byte) (int, error) {
 
 // Run 存储日志文件的路径
 func Run(destination string) {
-	logger = log.New(fileLog(destination), "go: ", log.LstdFlags)
+	logger = log.New(fileLog(destination), "[go] - ", log.LstdFlags)
 }
 
 func write(message string) {

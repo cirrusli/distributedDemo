@@ -25,11 +25,63 @@ func (r *registry) add(reg Registration) error {
 	r.registrations = append(r.registrations, reg)
 	r.mutex.Unlock()
 	err := r.sendRequiredServices(reg)
+	r.notify(patch{
+		Added: []patchEntry{
+			//待注册的服务的名称与URL
+			{
+				Name: reg.ServiceName,
+				URL:  reg.ServiceURL,
+			},
+		},
+	})
 	return err
 }
 
+//当服务注册或被移除时进行通知
+//todo receiver
+func (r registry) notify(fullPatch patch) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+	//遍历已经注册的服务
+	for _, reg := range r.registrations {
+		//使用goroutine并发地发送通知
+		go func(reg Registration) {
+			//针对每个注册的服务，对其所依赖的服务进行循环
+			for _, reqService := range reg.RequiredServices {
+				p := patch{
+					Added:   []patchEntry{},
+					Removed: []patchEntry{},
+				}
+				//发送更新的标志位
+				sendUpdate := false
+				//看看添加了哪些服务
+				for _, added := range fullPatch.Added {
+					if added.Name == reqService {
+						p.Added = append(p.Added, added)
+						sendUpdate = true
+					}
+				}
+				for _, removed := range fullPatch.Removed {
+					if removed.Name == reqService {
+						p.Removed = append(p.Removed, removed)
+						sendUpdate = true
+					}
+				}
+				if sendUpdate {
+					err := r.sendPatch(p, reg.ServiceUpdateURL)
+					if err != nil {
+						log.Println(err)
+						return
+					}
+				}
+			}
+		}(reg)
+	}
+}
+
 //请求所依赖的服务
-func (r *registry) sendRequiredServices(reg Registration) error {
+//todo receiver
+func (r registry) sendRequiredServices(reg Registration) error {
 	//仅需要一个读的锁
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
@@ -54,7 +106,10 @@ func (r *registry) sendRequiredServices(reg Registration) error {
 	}
 	return nil
 }
-func (r *registry) sendPatch(p patch, url string) error {
+
+//当一个服务出现时，想要通知依赖该服务的其他服务
+//todo receiver
+func (r registry) sendPatch(p patch, url string) error {
 	d, err := json.Marshal(p)
 	if err != nil {
 		return err
@@ -72,13 +127,21 @@ func (r *registry) remove(url string) error {
 	//check whether the url exist
 	for i := range reg.registrations {
 		if reg.registrations[i].ServiceURL == url {
+			r.notify(patch{
+				Removed: []patchEntry{
+					{
+						Name: r.registrations[i].ServiceName,
+						URL:  r.registrations[i].ServiceURL,
+					},
+				},
+			})
 			r.mutex.Lock()
 			reg.registrations = append(reg.registrations[:i], reg.registrations[i+1:]...)
 			r.mutex.Unlock()
 			return nil
 		}
 	}
-	return fmt.Errorf("method remove:service at URL %s not found", url)
+	return fmt.Errorf("method remove of registry:service at URL %s not found", url)
 }
 
 //包级变量
@@ -91,7 +154,7 @@ var reg = registry{
 type RegService struct{}
 
 func (s RegService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("Method ServeHTTP:Request Received")
+	log.Println("Method ServeHTTP of RegService:Request Received")
 	switch r.Method {
 	//注册服务
 	case http.MethodPost:
@@ -99,14 +162,14 @@ func (s RegService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var r Registration
 		err := dec.Decode(&r)
 		if err != nil {
-			log.Println("Method ServeHTTP:Error decoding registration", err)
+			log.Println("Method ServeHTTP of RegService:Error decoding registration", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		log.Printf("Method ServeHTTP:Adding service:%v with URL:%s\n", r.ServiceName, r.ServiceURL)
+		log.Printf("Method ServeHTTP of RegService:Adding service:%v with URL:%s\n", r.ServiceName, r.ServiceURL)
 		err = reg.add(r)
 		if err != nil {
-			log.Println("Method ServeHTTP:add service failed", err)
+			log.Println("Method ServeHTTP of RegService:add service failed", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -114,16 +177,16 @@ func (s RegService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		payload, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			log.Println("Method ServeHTTP:Error decoding registration", err)
+			log.Println("Method ServeHTTP of RegService:Error decoding registration", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		url := string(payload)
-		log.Printf("Method ServeHTTP:Removing service at URL:%s", url)
+		log.Printf("Method ServeHTTP of RegService:Removing service at URL:%s", url)
 		err = reg.remove(url)
 		if err != nil {
-			log.Println("Method ServeHTTP:add service failed", err)
-			w.WriteHeader(http.StatusBadRequest)
+			log.Println("Method ServeHTTP of RegService:add service failed", err)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	default:

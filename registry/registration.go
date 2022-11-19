@@ -7,9 +7,11 @@ type Registration struct {
 	//如：当registry中有grade所依赖的logger服务时，由此返回
 	ServiceUpdateURL string
 }
+
+// ServiceName 注册的服务名称
 type ServiceName string
 
-//注册服务的名称
+//注册的具体服务名称
 const (
 	LoggerService = ServiceName("LoggerService")
 	GradeService  = ServiceName("GradeService")
