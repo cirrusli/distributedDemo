@@ -1,4 +1,4 @@
-package grade
+package grades
 
 import (
 	"bytes"
@@ -10,9 +10,6 @@ import (
 	"strings"
 )
 
-//让这个空类型实现serveHTTP的方法
-type studentsHandler struct{}
-
 func RegisterHandlers() {
 	handler := new(studentsHandler)
 	//对应集合类资源（如查询所有学生的成绩）
@@ -20,6 +17,9 @@ func RegisterHandlers() {
 	//查询具体的某个学生
 	http.Handle("/students/", handler)
 }
+
+//让这个空类型实现serveHTTP的方法
+type studentsHandler struct{}
 
 // /students
 // /students/{id}

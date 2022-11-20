@@ -1,4 +1,4 @@
-package grade
+package grades
 
 func init() {
 	students = []Student{

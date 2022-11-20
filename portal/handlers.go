@@ -2,7 +2,7 @@ package portal
 
 import (
 	"bytes"
-	"distributedDemo/grade"
+	"distributedDemo/grades"
 	"distributedDemo/registry"
 
 	"encoding/json"
@@ -57,7 +57,7 @@ func (studentsHandler) renderStudents(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Println("Error retrieving students: ", err)
+			log.Println("Method renderStudents of studentsHandler:\nError retrieving students: ", err)
 		}
 	}()
 
@@ -71,13 +71,17 @@ func (studentsHandler) renderStudents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var s grade.Students
+	var s grades.Students
 	err = json.NewDecoder(res.Body).Decode(&s)
 	if err != nil {
 		return
 	}
 
-	rootTemplate.Lookup("students.html").Execute(w, s)
+	err = rootTemplate.Lookup("students.html").Execute(w, s)
+	if err != nil {
+		log.Println("Method renderStudents of studentsHandler:", err)
+		return
+	}
 }
 
 func (studentsHandler) renderStudent(w http.ResponseWriter, r *http.Request, id int) {
@@ -101,13 +105,17 @@ func (studentsHandler) renderStudent(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 
-	var s grade.Student
+	var s grades.Student
 	err = json.NewDecoder(res.Body).Decode(&s)
 	if err != nil {
 		return
 	}
 
-	rootTemplate.Lookup("student.html").Execute(w, s)
+	err = rootTemplate.Lookup("student.html").Execute(w, s)
+	if err != nil {
+		log.Println("Method renderStudent of studentsHandler:", err)
+		return
+	}
 }
 
 func (studentsHandler) renderGrades(w http.ResponseWriter, r *http.Request, id int) {
@@ -127,9 +135,9 @@ func (studentsHandler) renderGrades(w http.ResponseWriter, r *http.Request, id i
 		log.Println("Failed to parse score: ", err)
 		return
 	}
-	g := grade.Grade{
+	g := grades.Grade{
 		Title: title,
-		Type:  grade.GradeType(gradeType),
+		Type:  grades.GradeType(gradeType),
 		Score: float32(score),
 	}
 	data, err := json.Marshal(g)

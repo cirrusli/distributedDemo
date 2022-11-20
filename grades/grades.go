@@ -1,4 +1,4 @@
-package grade
+package grades
 
 import (
 	"fmt"
@@ -12,6 +12,7 @@ type Student struct {
 	Grades    []Grade
 }
 
+// Average 计算一名学生的平均成绩
 func (s Student) Average() float32 {
 	var result float32
 	for _, grade := range s.Grades {

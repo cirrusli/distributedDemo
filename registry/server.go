@@ -8,10 +8,11 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 )
 
 const ServerPort = ":3000"
-const ServiceURL = "http://localhost" + ServerPort + "/services"
+const ServicesURL = "http://localhost" + ServerPort + "/services"
 
 type registry struct {
 	registrations []Registration
@@ -144,6 +145,47 @@ func (r *registry) remove(url string) error {
 	return fmt.Errorf("method remove of registry:service at URL %s not found", url)
 }
 
+func (r *registry) heartbeat(freq time.Duration) {
+	for {
+		var wg sync.WaitGroup
+		for _, reg := range r.registrations {
+			wg.Add(1)
+			go func(reg Registration) {
+				defer wg.Done()
+				successFlag := true
+				for attempts := 0; attempts < 3; attempts++ {
+					res, err := http.Get(reg.HeartbeatURL)
+					if err != nil {
+						log.Println("In ./registry/server.go:Method heartbeat of registry:", err)
+					} else if res.StatusCode == http.StatusOK {
+						log.Println("Heartbeat check passed for", reg.ServiceName)
+						if !successFlag {
+							r.add(reg)
+						}
+						break
+					}
+					log.Println("Heartbeat check failed for", reg.ServiceName)
+					if successFlag {
+						successFlag = false
+						r.remove(reg.ServiceURL)
+					}
+					time.Sleep(1 * time.Second)
+				}
+			}(reg)
+			wg.Wait()
+			time.Sleep(freq)
+		}
+	}
+}
+
+var once sync.Once
+
+func SetupRegistryService() {
+	once.Do(func() {
+		go reg.heartbeat(10 * time.Second)
+	})
+}
+
 //包级变量
 var reg = registry{
 	registrations: make([]Registration, 0),
@@ -154,7 +196,7 @@ var reg = registry{
 type RegService struct{}
 
 func (s RegService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("Method ServeHTTP of RegService:Request Received")
+	log.Println("Method ServeHTTP of RegService:Request received")
 	switch r.Method {
 	//注册服务
 	case http.MethodPost:

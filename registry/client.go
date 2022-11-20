@@ -13,6 +13,14 @@ import (
 
 // RegisterService 给registryService服务发送一个POST请求
 func RegisterService(r Registration) error {
+	heartbeatURL, err := url.Parse(r.HeartbeatURL)
+	if err != nil {
+		return err
+	}
+	http.HandleFunc(heartbeatURL.Path, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	serviceUpdateURL, err := url.Parse(r.ServiceUpdateURL)
 	if err != nil {
 		return err
@@ -25,7 +33,7 @@ func RegisterService(r Registration) error {
 	if err != nil {
 		return err
 	}
-	res, err := http.Post(ServiceURL, "application/json", buf)
+	res, err := http.Post(ServicesURL, "application/json", buf)
 	if err != nil {
 		return err
 	}
@@ -58,7 +66,7 @@ func (suh serviceUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 // ShutdownService 取消注册服务
 func ShutdownService(url string) error {
-	req, err := http.NewRequest(http.MethodDelete, ServiceURL, bytes.NewBuffer([]byte(url)))
+	req, err := http.NewRequest(http.MethodDelete, ServicesURL, bytes.NewBuffer([]byte(url)))
 	if err != nil {
 		return err
 	}

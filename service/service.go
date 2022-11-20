@@ -25,7 +25,8 @@ func startService(ctx context.Context, serviceName registry.ServiceName,
 	host, port string) context.Context {
 	ctx, cancel := context.WithCancel(ctx)
 	var srv http.Server
-	srv.Addr = host + port
+	//host+port
+	srv.Addr = port
 
 	go func() {
 		log.Println(srv.ListenAndServe())

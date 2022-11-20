@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"distributedDemo/grade"
+	"distributedDemo/grades"
 	"distributedDemo/logger"
 	"distributedDemo/registry"
 	"distributedDemo/service"
@@ -19,13 +19,14 @@ func main() {
 		ServiceURL:       serviceAddress,
 		RequiredServices: []registry.ServiceName{registry.LoggerService},
 		ServiceUpdateURL: serviceAddress + "/services",
+		HeartbeatURL:     serviceAddress + "/heartbeat",
 	}
 	ctx, err := service.Start(
 		context.Background(),
 		host,
 		port,
 		r,
-		grade.RegisterHandlers,
+		grades.RegisterHandlers,
 	)
 	if err != nil {
 		log.Fatalln("starting", registry.GradeService, ":", err)
@@ -36,5 +37,5 @@ func main() {
 	}
 	//服务启动失败或手动终止时
 	<-ctx.Done()
-	fmt.Println("Shutting down grade service")
+	fmt.Println("Shutting down grades service")
 }
