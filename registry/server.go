@@ -39,8 +39,7 @@ func (r *registry) add(reg Registration) error {
 }
 
 // 当服务注册或被移除时进行通知
-// todo receiver
-func (r registry) notify(fullPatch patch) {
+func (r *registry) notify(fullPatch patch) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 	//遍历已经注册的服务
@@ -81,8 +80,7 @@ func (r registry) notify(fullPatch patch) {
 }
 
 // 请求所依赖的服务
-// todo receiver
-func (r registry) sendRequiredServices(reg Registration) error {
+func (r *registry) sendRequiredServices(reg Registration) error {
 	//仅需要一个读的锁
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
@@ -109,8 +107,7 @@ func (r registry) sendRequiredServices(reg Registration) error {
 }
 
 // 当一个服务出现时，想要通知依赖该服务的其他服务
-// todo receiver
-func (r registry) sendPatch(p patch, url string) error {
+func (r *registry) sendPatch(p patch, url string) error {
 	d, err := json.Marshal(p)
 	if err != nil {
 		return err
