@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -20,7 +20,7 @@ type registry struct {
 	mutex *sync.RWMutex
 }
 
-//添加服务注册
+// 添加服务注册
 func (r *registry) add(reg Registration) error {
 	r.mutex.Lock()
 	r.registrations = append(r.registrations, reg)
@@ -38,8 +38,8 @@ func (r *registry) add(reg Registration) error {
 	return err
 }
 
-//当服务注册或被移除时进行通知
-//todo receiver
+// 当服务注册或被移除时进行通知
+// todo receiver
 func (r registry) notify(fullPatch patch) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
@@ -80,8 +80,8 @@ func (r registry) notify(fullPatch patch) {
 	}
 }
 
-//请求所依赖的服务
-//todo receiver
+// 请求所依赖的服务
+// todo receiver
 func (r registry) sendRequiredServices(reg Registration) error {
 	//仅需要一个读的锁
 	r.mutex.RLock()
@@ -108,8 +108,8 @@ func (r registry) sendRequiredServices(reg Registration) error {
 	return nil
 }
 
-//当一个服务出现时，想要通知依赖该服务的其他服务
-//todo receiver
+// 当一个服务出现时，想要通知依赖该服务的其他服务
+// todo receiver
 func (r registry) sendPatch(p patch, url string) error {
 	d, err := json.Marshal(p)
 	if err != nil {
@@ -123,7 +123,7 @@ func (r registry) sendPatch(p patch, url string) error {
 	return nil
 }
 
-//取消服务注册
+// 取消服务注册
 func (r *registry) remove(url string) error {
 	//check whether the url exist
 	for i := range reg.registrations {
@@ -160,14 +160,20 @@ func (r *registry) heartbeat(freq time.Duration) {
 					} else if res.StatusCode == http.StatusOK {
 						log.Println("Heartbeat check passed for", reg.ServiceName)
 						if !successFlag {
-							r.add(reg)
+							err := r.add(reg)
+							if err != nil {
+								return
+							}
 						}
 						break
 					}
 					log.Println("Heartbeat check failed for", reg.ServiceName)
 					if successFlag {
 						successFlag = false
-						r.remove(reg.ServiceURL)
+						err := r.remove(reg.ServiceURL)
+						if err != nil {
+							return
+						}
 					}
 					time.Sleep(1 * time.Second)
 				}
@@ -186,7 +192,7 @@ func SetupRegistryService() {
 	})
 }
 
-//包级变量
+// 包级变量
 var reg = registry{
 	registrations: make([]Registration, 0),
 	mutex:         new(sync.RWMutex),
@@ -217,7 +223,7 @@ func (s RegService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	//取消服务
 	case http.MethodDelete:
-		payload, err := ioutil.ReadAll(r.Body)
+		payload, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Println("Method ServeHTTP of RegService:Error decoding registration", err)
 			w.WriteHeader(http.StatusInternalServerError)
